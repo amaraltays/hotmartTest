@@ -1,0 +1,126 @@
+<html>
+<head>
+<script type="text/javascript" src="./js/jquery/jquery-2.1.0.min.js"></script>
+<script type="text/javascript"src="./js/plupload/js/plupload.full.min.js"></script>
+<style>
+	table,th,td {
+	  border : 1px solid black;
+	  border-collapse: collapse;
+	}
+	th,td {
+	  padding: 5px;
+	}
+</style>
+
+</head>
+<body>
+	<h1>File Upload</h1>
+	<br />
+	<ul id="filelist"></ul>
+	<br />
+
+	<br />
+	<pre id="console"></pre>
+
+	<div id="container">
+		<p>	User id : <input type="text" id="userId" />	</p>
+		<a id="browse" href="javascript:;">Select file</a> 
+		<a id="start-upload" href="javascript:;">Upload</a>
+	</div>
+
+	
+
+	<a id="listFiles" target="blank" onclick="loadXMLDoc()"	href="javascript:;">List files</a>
+	<br><br>
+	<table id="filesUploadList"></table>
+	
+	<script type="text/javascript">
+	    var upTime;
+	    var initialUpTime;
+		var uploader = new plupload.Uploader({
+			browse_button : 'browse',
+			chunk_size : "1Mb",
+			url : '/filebox/rest/FileUploadedService/uploadLargeFile',
+			multipart_params : {
+				userId : $("#userId").val(),
+				uploadTime : 0
+			}
+		});
+
+		uploader.init();
+
+		uploader.bind('FilesAdded', function(up, files) {
+			var html = '';
+			plupload.each(files, function(file) {
+				html += '<li id="' + file.id + '">' + file.name + ' ('
+						+ plupload.formatSize(file.size) + ') <b></b></li>';
+			});
+			document.getElementById('filelist').innerHTML += html;
+		});
+
+		uploader.bind('UploadProgress',
+						function(up, file) {
+							document.getElementById(file.id)
+									.getElementsByTagName('b')[0].innerHTML = '<span>'
+									+ file.percent + "%</span>";
+									upTime = new Date() - initialUpTime;
+							up.settings.multipart_params["uploadTime"] = upTime;
+						});
+
+		uploader.bind('Error', function(up, err) {
+			document.getElementById('console').innerHTML += "\nError #"
+					+ err.status + ": " + err.message + ": " + err.response;
+		});
+
+		uploader.bind('FileUploaded', function(up, file, result) {
+			initialUpTime = new Date();
+		});
+		uploader.bind('UploadFile', function(up, file) {
+			initialUpTime = new Date();
+		});
+		document.getElementById('start-upload').onclick = function() {
+			var userId = $("#userId").val();
+			uploader.settings.multipart_params["userId"] = userId;
+			document.getElementById('console').innerHTML = "";
+			uploader.start();
+		};
+	function loadXMLDoc() {
+	  var xmlhttp = new XMLHttpRequest();
+	  xmlhttp.onreadystatechange = function() {
+	    if (this.readyState == 4 && this.status == 200) {
+	      myFunction(this);
+	    }
+	  };
+	  xmlhttp.open("GET", "/filebox/rest/FileUploadedService/filesUp", true);
+	  xmlhttp.send();
+	}
+	function myFunction(xml) {
+	  var i;
+	  var xmlDoc = xml.responseXML;
+	  var table="<tr><th>File name</th><th>User Id</th><th>Link</th><th>Status</th><th>Upload time (ms)</th><th>Chunks</th></tr>";
+	  var x = xmlDoc.getElementsByTagName("fileuploaded");
+	  for (i = 0; i <x.length; i++) { 
+	    table += "<tr>" + 
+	    "<td>" + x[i].getElementsByTagName("fileName")[0].childNodes[0].nodeValue + "</td>";
+	    if (x[i].getElementsByTagName("userID")[0].childNodes[0]) {
+	    	table += "<td>" + x[i].getElementsByTagName("userID")[0].childNodes[0].nodeValue + "</td>";
+	    } else {
+	    	table += "<td></td>";
+	    }
+	    if (x[i].getElementsByTagName("downloadLink")[0] && x[i].getElementsByTagName("downloadLink")[0].childNodes[0]) {
+	    	table += "<td>" + "<a href='" + x[i].getElementsByTagName("downloadLink")[0].childNodes[0].nodeValue + "'target = 'blank'>" +
+	    	x[i].getElementsByTagName("downloadLink")[0].childNodes[0].nodeValue + "</a>" + "</td>";
+	    } else {
+	    	table += "<td></td>";
+	    }
+	    table += "<td>" + x[i].getElementsByTagName("status")[0].childNodes[0].nodeValue + "</td>" +
+	    "<td>" + x[i].getElementsByTagName("uploadTime")[0].childNodes[0].nodeValue + "</td>" +
+	    "<td>" + x[i].getElementsByTagName("chunksCount")[0].childNodes[0].nodeValue + "</td>" +
+	    "</tr>"
+	  }
+	  document.getElementById("filesUploadList").innerHTML = table;
+	}
+	</script>
+
+</body>
+</html>
